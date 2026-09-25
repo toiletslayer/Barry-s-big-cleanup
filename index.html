@@ -47,20 +47,20 @@ function sfx(freq=440,d=.08,type='square',vol=.035){if(!audioCtx)return;const o=
 function music(dt){if(!audioCtx||paused)return;musicTimer-=dt;if(musicTimer>0)return;musicTimer=.42;const notes=[262,330,392,330,294,349,440,349];sfx(notes[Math.floor(time/.42)%notes.length],.16,'triangle',.012)}
 function makeThing(type,x,y,s=1){const d={trash:[38,90,28,24,'Litter'],shrub:[58,120,46,38,'Shrub'],fence:[92,170,52,54,'Fence'],mailbox:[115,230,34,54,'Mailbox'],car:[210,420,82,42,'Car'],shed:[300,650,100,82,'Shed'],house:[520,1100,142,120,'House'],hydrant:[150,310,28,45,'Hydrant'],tree:[180,350,70,100,'Tree']}[type];return{type,x,y,s,hp:d[0],max:d[0],val:d[1],w:d[2]*s,h:d[3]*s,label:d[4],burn:0,dead:false,flash:0,hit:0}}
 function addThing(type,x,y,s=1){things.push(makeThing(type,x,y,s))}
-function buildNeighborhood(){lots=[];const phase=level%areas.length,lotCount=[4,5,5,6][phase],blockLeft=330,blockRight=1245,lotW=(blockRight-blockLeft)/lotCount;
-for(let i=0;i<lotCount;i++){const left=blockLeft+i*lotW,right=left+lotW,center=(left+right)/2,driveRight=(i+level)%2===0,driveX=center+(driveRight?1:-1)*lotW*.27,mailX=driveX+(driveRight?-1:1)*34,style=(i+level)%4;lots.push({left,right,center,driveX,style});
-addThing('house',center+(driveRight?-10:10),366,rand(.78,.92));addThing('mailbox',mailX,520,rand(.88,1.02));
-if(style===0){addThing('tree',center+(driveRight?-1:1)*lotW*.28,438,rand(.78,.96));addThing('shrub',center-28,463,rand(.82,1.02));if(phase>1)addThing('trash',driveX,508,.9)}
-if(style===1){addThing('shrub',center-35,458,.9);addThing('shrub',center+18,462,.86);addThing('fence',center-28,494,.9);addThing('fence',center+24,494,.9);if(phase>0)addThing('trash',driveX,510,.92)}
-if(style===2){addThing('tree',center+(driveRight?-1:1)*lotW*.30,432,.82);addThing('trash',driveX+(driveRight?-22:22),505,.95);if(phase>0)addThing('car',driveX,478,rand(.82,.95));else addThing('shrub',center-24,460,.92)}
-if(style===3){addThing('shrub',center-42,456,.86);addThing('shrub',center+5,458,.92);addThing('tree',center+(driveRight?1:-1)*lotW*.30,438,.78);if(phase>1){addThing('fence',center-30,494,.88);addThing('fence',center+22,494,.88)}}
-if(phase>=2&&i%3===2)addThing('shed',center+(driveRight?-1:1)*lotW*.24,424,.68)}
-for(let i=1;i<lotCount;i+=3){const curbX=blockLeft+i*lotW+12;addThing('hydrant',curbX,530,.92)}
-if(phase>=1&&lotCount>4)addThing('car',blockLeft+lotW*.55,600,.9)}
+function buildNeighborhood(){lots=[];const phase=level%areas.length,lotCount=[3,4,4,5][phase],blockLeft=350,blockRight=1230,lotW=(blockRight-blockLeft)/lotCount;
+for(let i=0;i<lotCount;i++){const left=blockLeft+i*lotW,right=left+lotW,center=(left+right)/2,driveRight=(i+level)%2===0,driveX=center+(driveRight?1:-1)*lotW*.30,mailX=driveX+(driveRight?-1:1)*30,style=(i+level)%4;lots.push({left,right,center,driveX,style});
+const houseX=center+(driveRight?-1:1)*lotW*.05;addThing('house',houseX,354,rand(.76,.88));addThing('mailbox',mailX,522,rand(.86,.98));
+if(style===0){addThing('tree',center+(driveRight?-1:1)*lotW*.30,438,rand(.76,.90));if(i%2===0)addThing('shrub',center-22,466,.84);if(phase>2)addThing('trash',driveX+(driveRight?-18:18),510,.88)}
+if(style===1){addThing('shrub',center-28,466,.88);addThing('fence',center+(driveRight?-1:1)*lotW*.31,500,.92);if(phase>1)addThing('trash',driveX+(driveRight?-18:18),510,.88)}
+if(style===2){addThing('tree',center+(driveRight?-1:1)*lotW*.31,434,.80);if(phase>0)addThing('car',driveX,480,rand(.80,.92));else addThing('shrub',center+18,466,.86)}
+if(style===3){addThing('shrub',center-30,464,.84);addThing('shrub',center+26,467,.82);if(phase>1)addThing('fence',center+(driveRight?1:-1)*lotW*.31,500,.90)}
+if(phase>=2&&i===lotCount-1)addThing('shed',center+(driveRight?-1:1)*lotW*.27,424,.64)}
+for(let i=1;i<lotCount;i+=3){const curbX=blockLeft+i*lotW+8;addThing('hydrant',curbX,532,.90)}
+if(phase>=2)addThing('car',blockLeft+lotW*.42,606,.86)}
 function spawnLevel(){things=[];particles=[];embers=[];lots=[];burned=0;const A=areas[level%areas.length];ui.area.textContent=A.name;buildNeighborhood();total=things.length;player.x=180;player.y=520;player.fuel=player.maxFuel;say(level===0?'Look at all these lovely homes, friends!':level===1?'Another block needs our help!':'Remember: every property deserves a deep clean!')}
 function cloud(x,y){ctx.beginPath();ctx.arc(x,y,35,0,7);ctx.arc(x+38,y-12,46,0,7);ctx.arc(x+80,y,34,0,7);ctx.fill()}
 function drawBackground(){const A=areas[level%areas.length];ctx.fillStyle=A.sky;ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff9';for(let i=0;i<5;i++)cloud((i*310-time*8)%1550-100,85+(i%2)*55);ctx.fillStyle=A.ground;ctx.fillRect(0,270,W,450);
-for(let i=0;i<lots.length;i++){const l=lots[i];ctx.fillStyle=i%2?'#ffffff0b':'#274d1810';ctx.fillRect(l.left,286,l.right-l.left,262);ctx.strokeStyle='#47734233';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(l.left,302);ctx.lineTo(l.left,548);ctx.stroke();ctx.fillStyle='#aaa79d';ctx.fillRect(l.driveX-24,398,48,150);ctx.fillStyle='#d9d2c5';ctx.fillRect(l.driveX-13,392,26,156);ctx.fillStyle='#cbbfae';ctx.fillRect(l.center-11,430,22,118)}
+for(let i=0;i<lots.length;i++){const l=lots[i];ctx.fillStyle=i%2?'#ffffff09':'#274d180d';ctx.fillRect(l.left,286,l.right-l.left,262);ctx.strokeStyle='#47734226';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(l.left,310);ctx.lineTo(l.left,548);ctx.stroke();ctx.fillStyle='#aaa79d';ctx.fillRect(l.driveX-22,405,44,143);ctx.fillStyle='#d9d2c5';ctx.fillRect(l.driveX-11,399,22,149);ctx.fillStyle='#cbbfae';ctx.fillRect(l.center-9,434,18,114)}
 ctx.fillStyle=A.road;ctx.fillRect(0,560,W,160);ctx.fillStyle='#d8d1c5';ctx.fillRect(0,548,W,18);ctx.fillStyle='#fff5';for(let x=40;x<W;x+=160)ctx.fillRect(x,636,88,8);ctx.fillStyle='#5e9f55';for(let x=20;x<W;x+=60){ctx.beginPath();ctx.arc(x,280+(x%3)*8,34,Math.PI,0);ctx.fill()}}
 function drawThing(t){ctx.save();ctx.translate(t.x,t.y);if(t.flash>0)ctx.globalAlpha=.72;const hot=t.burn>0,soot=clamp(1-t.hp/t.max,0,1);if(t.hit>0){ctx.save();ctx.globalAlpha=.9;ctx.strokeStyle='#fff36b';ctx.lineWidth=6;ctx.shadowColor='#ff8a2b';ctx.shadowBlur=18;ctx.strokeRect(-t.w*.58,-t.h*.67,t.w*1.16,t.h*1.22);ctx.restore();}if(t.dead){ctx.fillStyle='#3a3130';ctx.beginPath();ctx.ellipse(0,10,t.w*.55,12,0,0,7);ctx.fill();ctx.restore();return}
 if(t.type==='trash'){ctx.fillStyle='#5b6d70';ctx.fillRect(-t.w/2,-t.h/2,t.w,t.h);ctx.fillStyle='#e7db9c';ctx.fillRect(-7,-t.h/2-8,17,10)}
