@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "active": true,
+  "format": "svg",
+  "basePath": "assets/sprites/objects/",
+  "objects": {
+    "trash": "trash.svg",
+    "shrub": "shrub.svg",
+    "fence": "fence.svg",
+    "mailbox": "mailbox.svg",
+    "car": "car.svg",
+    "shed": "shed.svg",
+    "house": "house.svg",
+    "hydrant": "hydrant.svg",
+    "tree": "tree.svg",
+    "bench": "bench.svg",
+    "streetlight": "streetlight.svg",
+    "dumpster": "dumpster.svg",
+    "sign": "sign.svg",
+    "storefront": "storefront.svg",
+    "cart": "cart.svg",
+    "gasPump": "gas-pump.svg",
+    "canopy": "canopy.svg",
+    "bigbox": "bigbox.svg",
+    "booth": "booth.svg",
+    "table": "table.svg",
+    "pavilion": "pavilion.svg"
+  },
+  "procedural": [
+    "barry",
+    "resident",
+    "backgrounds",
+    "fire",
+    "smoke",
+    "embers",
+    "burn-overlays",
+    "hud"
+  ],
+  "notes": "Object SVGs are loaded by index.html; procedural object rendering remains as a fallback."
+}
