@@ -149,6 +149,9 @@ async function playShort(page){
   await page.mouse.move(rect.x+target.x*rect.width/1280,rect.y+target.y*rect.height/720);
   await page.mouse.down();
   await page.waitForTimeout(2800);
+  const firingDebug=await page.evaluate(i=>({mouse:{...mouse},player:{...player},hit:flameTouches(things[i]),wantsFire:mouse.down||keys.Space||touchFire,fuelLocked,paused,started,target:{x:things[i].x,y:things[i].y,hp:things[i].hp,max:things[i].max,w:things[i].w,h:things[i].h}}),target.index);
+  log('firing-debug',firingDebug);
+  await shot(page,'desktop-during-fire.png');
   await page.mouse.up();
   const after=await page.evaluate(i=>({hp:things[i].hp,max:things[i].max,stage:damageStage(things[i]),fuel:player.fuel}),target.index);
   assert.ok(after.hp<target.before-35,'firing did not damage the chosen object');
