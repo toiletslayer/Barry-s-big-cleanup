@@ -36,7 +36,7 @@
     "burn-overlays",
     "hud"
   ],
-  "notes": "Five-stage HP-based PNG damage sheets render when loaded. Existing SVG assets and procedural drawings remain fallbacks. Barry and resident art are unchanged.",
+  "notes": "Canonical PNG damage sheets use per-stage source rectangles to keep object scale and ground baseline consistent as damage accumulates. SVG and procedural drawing remain fallback paths; Barry and resident art are unchanged.",
   "damageBasePath": "assets/sprites/damage/",
   "damageFormat": "png",
   "damageDimensions": {
@@ -73,5 +73,6 @@
     "booth": "booth.png",
     "table": "table.png",
     "pavilion": "pavilion.png"
-  }
+  },
+  "damageFrameManifest": "assets/sprites/damage/manifest.json"
 }
