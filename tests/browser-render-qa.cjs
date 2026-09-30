@@ -38,7 +38,8 @@ const shot=async(page,name)=>{
 async function waitLoaded(page){
   await page.waitForFunction(()=>typeof started==='boolean'&&started&&things.length>0&&damageFrameManifest&&Object.keys(damageFrameManifest.frames).length===21,{timeout:30000});
   return await page.evaluate(async()=>{
-    const types=Object.keys(damageFiles);
+    // Decode only active block assets before timing real play; 21-at-once is a synthetic stress case.
+    const types=[...new Set(things.map(t=>t.type))];
     return await Promise.all(types.map(async type=>{
       const img=getDamageImage(type);
       await img.decode();
@@ -131,6 +132,11 @@ function checkRender(data){
     const hashes=entry.stages.map(x=>x.hash);
     assert.ok(new Set(hashes).size>=4,entry.type+' stage images look identical');
   }
+  for(const type of ['canopy','pavilion','bench']){
+    const entry=data.results.find(x=>x.type===type);
+    const actual=entry.stages[0].bbox.width;
+    assert.ok(actual/entry.nominal.width>=.9,type+' full sprite is too narrow for its collision footprint');
+  }
   assert.equal(data.procedural,0,'old burn overlay called for new PNGs');
   assert.equal(data.rubble,0,'old rubble renderer called for new PNGs');
 }
@@ -185,8 +191,9 @@ async function layout(page,label){
     const c=document.querySelector('#game').getBoundingClientRect();
     const fire=document.querySelector('#firebtn').getBoundingClientRect();
     const pad=document.querySelector('#pad').getBoundingClientRect();
+    const dialog=document.querySelector('#dialog').getBoundingClientRect();
     const isTouch=getComputedStyle(document.querySelector('#touch')).display!=='none';
-    return {viewport:[innerWidth,innerHeight],canvas:{x:c.x,y:c.y,w:c.width,h:c.height,bottom:c.bottom},fire:{x:fire.x,y:fire.y,right:fire.right,bottom:fire.bottom},pad:{x:pad.x,y:pad.y,right:pad.right,bottom:pad.bottom},touch:isTouch};
+    return {viewport:[innerWidth,innerHeight],canvas:{x:c.x,y:c.y,w:c.width,h:c.height,bottom:c.bottom},dialogTop:dialog.top,fire:{x:fire.x,y:fire.y,right:fire.right,bottom:fire.bottom},pad:{x:pad.x,y:pad.y,right:pad.right,bottom:pad.bottom},touch:isTouch};
   });
   assert.ok(v.canvas.w>150&&v.canvas.h>80,'Canvas too small in '+label);
   if(label.indexOf('mobile')===0){
@@ -194,6 +201,7 @@ async function layout(page,label){
     assert.ok(v.fire.x>=0&&v.fire.right<=v.viewport[0]+3&&v.fire.bottom<=v.viewport[1]+3,'Fire button offscreen');
     assert.ok(v.pad.x>=0&&v.pad.bottom<=v.viewport[1]+3,'Movement pad offscreen');
   }
+  if(label==='mobile-portrait')assert.ok(v.dialogTop>v.canvas.bottom+4,'Portrait dialogue covers actual playfield');
   report.layouts.push({label,...v});
   await shot(page,label+'.png');
 }
@@ -212,9 +220,9 @@ async function layout(page,label){
     await page.goto(base,{waitUntil:'networkidle'});
     await page.locator('#play').click();
     const imgs=await waitLoaded(page);
-    assert.equal(imgs.length,21);
+    assert.ok(imgs.length>=4&&imgs.length<=21,'Unexpected initial asset count');
     assert.ok(imgs.every(x=>x.width===2172&&x.height===724),'Bad sheet dimensions');
-    log('load-21-image-assets',imgs.length);
+    log('load-only-active-block-assets',imgs.length);
     await page.waitForTimeout(120);
     await layout(page,'desktop-start');
     report.play=await playShort(page);
@@ -234,6 +242,12 @@ async function layout(page,label){
     const progressed=await page.evaluate(()=>({level,block:blockNumber(),district:currentDistrict().name}));
     assert.equal(progressed.level,3);
     log('clear-three-blocks-and-upgrade',progressed);
+    // Explicitly stress-test the entire catalog only after the real-play timing sample.
+    const allLoaded=await page.evaluate(async()=>await Promise.all(Object.keys(damageFiles).map(async type=>{
+      const img=getDamageImage(type);await img.decode();return {type,w:img.naturalWidth,h:img.naturalHeight};
+    })));
+    assert.equal(allLoaded.length,21);
+    log('load-all-21-assets-for-stress-test',allLoaded.length);
     const audit=await renderAll(page);
     fs.writeFileSync(path.join(out,'all-21-rendered-stages.png'),Buffer.from(audit.image.split(',')[1],'base64'));
     delete audit.image;
