@@ -193,7 +193,7 @@ async function layout(page,label){
     const pad=document.querySelector('#pad').getBoundingClientRect();
     const dialog=document.querySelector('#dialog').getBoundingClientRect();
     const isTouch=getComputedStyle(document.querySelector('#touch')).display!=='none';
-    return {viewport:[innerWidth,innerHeight],canvas:{x:c.x,y:c.y,w:c.width,h:c.height,bottom:c.bottom},dialogTop:dialog.top,fire:{x:fire.x,y:fire.y,right:fire.right,bottom:fire.bottom},pad:{x:pad.x,y:pad.y,right:pad.right,bottom:pad.bottom},touch:isTouch};
+    return {viewport:[innerWidth,innerHeight],canvas:{x:c.x,y:c.y,w:c.width,h:c.height,bottom:c.bottom},dialogTop:dialog.top,dialogBottom:dialog.bottom,fire:{x:fire.x,y:fire.y,right:fire.right,bottom:fire.bottom},pad:{x:pad.x,y:pad.y,right:pad.right,bottom:pad.bottom},touch:isTouch};
   });
   assert.ok(v.canvas.w>150&&v.canvas.h>80,'Canvas too small in '+label);
   if(label.indexOf('mobile')===0){
@@ -202,6 +202,7 @@ async function layout(page,label){
     assert.ok(v.pad.x>=0&&v.pad.bottom<=v.viewport[1]+3,'Movement pad offscreen');
   }
   if(label==='mobile-portrait')assert.ok(v.dialogTop>v.canvas.bottom+4,'Portrait dialogue covers actual playfield');
+  if(label==='mobile-landscape')assert.ok(v.dialogBottom<v.canvas.y+v.canvas.h*.35,'Landscape dialogue obscures interactive ground');
   report.layouts.push({label,...v});
   await shot(page,label+'.png');
 }
