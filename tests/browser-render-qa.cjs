@@ -254,6 +254,31 @@ async function layout(page,label){
     report.render=audit;
     checkRender(audit);
     log('21x5-rendered',{types:audit.results.length,frames:audit.results.reduce((n,r)=>n+r.stages.length,0),procedural:audit.procedural,rubble:audit.rubble});
+    // Runtime fallback must still work when the PNG frame manifest fails.
+    const fallback=await page.evaluate(()=>{
+      const previousManifest=damageFrameManifest;
+      const previousBurn=drawBurnDamage;
+      const previousRubble=drawDestroyedThing;
+      let proceduralBurn=0,proceduralRubble=0;
+      try {
+        damageFrameManifest=null;
+        drawBurnDamage=function(...args){proceduralBurn++;return previousBurn(...args)};
+        drawDestroyedThing=function(...args){proceduralRubble++;return previousRubble(...args)};
+        const t=makeThing('house',640,475,1);
+        t.hp=Math.round(t.max*.49);t.burn=.25;
+        drawThing(t);
+        t.dead=true;t.hp=0;
+        drawThing(t);
+        return {proceduralBurn,proceduralRubble};
+      } finally {
+        damageFrameManifest=previousManifest;
+        drawBurnDamage=previousBurn;
+        drawDestroyedThing=previousRubble;
+      }
+    });
+    assert.ok(fallback.proceduralBurn>=1,'Missing-manifest damage fallback failed');
+    assert.ok(fallback.proceduralRubble>=1,'Missing-manifest destroyed fallback failed');
+    log('browser-fallback-no-manifest',fallback);
     // Cycle through the actual level constructor and background for every district.
     const num=await page.evaluate(()=>districts.length);
     for(let d=0;d<num*3;d++){
