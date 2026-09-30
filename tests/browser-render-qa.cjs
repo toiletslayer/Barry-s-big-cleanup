@@ -107,7 +107,7 @@ async function renderAll(page){
           pc.drawImage(c,640-regionW/2,475-regionH*.62,regionW,regionH,150+stage*colW+18,35+row*rowH+6,colW-32,rowH-18);
           pc.restore();
         }
-        results.push({type,stages});
+        results.push({type,nominal:{width:t.w,height:t.h},stages});
       }
       // The PNG path must not invoke either old procedural visual overlay.
       const o=makeThing('house',640,475,1);o.hp=Math.round(o.max*.45);o.burn=.4;
@@ -219,6 +219,21 @@ async function layout(page,label){
     await layout(page,'desktop-start');
     report.play=await playShort(page);
     log('real-play',report.play);
+    // Exercise the game's real block-completion modal and upgrade callbacks.
+    for(let step=0;step<3;step++){
+      await page.evaluate(()=>{for(const t of things){if(!t.dead)cleanThing(t)}});
+      await page.locator('#upgrade').waitFor({state:'visible',timeout:12000});
+      if(step===0)await shot(page,'real-upgrade-modal.png');
+      if(step===2){
+        const title=await page.locator('#upgrade h2').innerText();
+        assert.ok(title.indexOf('DISTRICT')>=0,'Third block did not show district reward');
+      }
+      await page.locator('#upgrade .up').first().click();
+      await page.waitForFunction(step=>level===step+1,step,{timeout:12000});
+    }
+    const progressed=await page.evaluate(()=>({level,block:blockNumber(),district:currentDistrict().name}));
+    assert.equal(progressed.level,3);
+    log('clear-three-blocks-and-upgrade',progressed);
     const audit=await renderAll(page);
     fs.writeFileSync(path.join(out,'all-21-rendered-stages.png'),Buffer.from(audit.image.split(',')[1],'base64'));
     delete audit.image;
@@ -227,17 +242,17 @@ async function layout(page,label){
     log('21x5-rendered',{types:audit.results.length,frames:audit.results.reduce((n,r)=>n+r.stages.length,0),procedural:audit.procedural,rubble:audit.rubble});
     // Cycle through the actual level constructor and background for every district.
     const num=await page.evaluate(()=>districts.length);
-    for(let d=0;d<num;d++){
+    for(let d=0;d<num*3;d++){
       const snapshot=await page.evaluate(d=>{
-        level=d*3;spawnLevel();
+        level=d;spawnLevel();
         draw();
         return {district:currentDistrict().name,block:currentBlock().name,types:[...new Set(things.map(x=>x.type))],count:things.length};
       },d);
       report.districts.push(snapshot);
       await page.waitForTimeout(170);
-      await shot(page,'district-'+String(d+1).padStart(2,'0')+'.png');
+      await shot(page,'block-'+String(d+1).padStart(2,'0')+'.png');
     }
-    log('district-playthrough-snapshots',report.districts);
+    log('all-18-block-snapshots',report.districts);
     await desktop.close();
     for(const [label,viewport] of [
       ['mobile-portrait',{width:390,height:844}],
