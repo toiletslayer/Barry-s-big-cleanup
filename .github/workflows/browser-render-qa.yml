@@ -1,0 +1,42 @@
+name: Browser rendering QA
+on:
+  push:
+    branches:
+      - main
+      - qa/damage-render-playtest-20260930
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  chromium-playtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run existing sprite and game syntax regression checks
+        run: |
+          node tests/damage-sprites.test.cjs
+          node tests/damage-sprite-frames.test.cjs
+      - name: Install Chromium and Playwright
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install chromium --with-deps
+      - name: Play actual game and inspect every rendered sprite stage
+        run: node tests/browser-render-qa.cjs
+      - name: Upload screenshots and gameplay report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: barry-browser-render-qa
+          path: |
+            qa-artifacts/
+            index.html
+            tests/browser-render-qa.cjs
+            assets/sprites/damage/manifest.json
+            assets/sprites/objects/
+          if-no-files-found: warn
+          retention-days: 14
