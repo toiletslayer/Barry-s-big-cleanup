@@ -2,7 +2,9 @@ name: Browser rendering QA
 on:
   push:
     branches:
+      - main
       - qa/damage-render-playtest-20260930
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
@@ -15,6 +17,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Run existing sprite and game syntax regression checks
+        run: |
+          node tests/damage-sprites.test.cjs
+          node tests/damage-sprite-frames.test.cjs
       - name: Install Chromium and Playwright
         run: |
           npm install --no-save playwright@1.56.1
