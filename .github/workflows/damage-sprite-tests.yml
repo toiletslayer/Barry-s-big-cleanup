@@ -1,0 +1,14 @@
+name: Damage sprite regression checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  sprite-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify sprite sheets, game script, and HP stage boundaries
+        run: node tests/damage-sprites.test.cjs
