@@ -98,6 +98,25 @@ const districts=[
 const palette=['#dc7055','#e3b854','#70a7c4','#89ba74','#c188b7','#e9e0c1'];
 const spriteFiles={"trash":"trash.svg","shrub":"shrub.svg","fence":"fence.svg","mailbox":"mailbox.svg","car":"car.svg","shed":"shed.svg","house":"house.svg","hydrant":"hydrant.svg","tree":"tree.svg","bench":"bench.svg","streetlight":"streetlight.svg","dumpster":"dumpster.svg","sign":"sign.svg","storefront":"storefront.svg","cart":"cart.svg","gasPump":"gas-pump.svg","canopy":"canopy.svg","bigbox":"bigbox.svg","booth":"booth.svg","table":"table.svg","pavilion":"pavilion.svg"};
 const spriteImages={};for(const [type,file] of Object.entries(spriteFiles)){const img=new Image();img.src='assets/sprites/objects/'+file;spriteImages[type]=img}
+const damageImages={};
+let damageManifest=null;
+// Fetch once. Missing manifest or assets intentionally preserve the existing SVG and procedural fallback.
+fetch('assets/sprites/damage/manifest.json')
+  .then(r=>{if(!r.ok)throw new Error('damage manifest unavailable');return r.json()})
+  .then(m=>{if(m.version!==1||!m.files||!m.frames)throw new Error('invalid damage manifest');damageManifest=m})
+  .catch(err=>{damageManifest=null;console.warn('Damage sprites unavailable; using legacy art:',err.message)});
+function loadDamageSprite(type){
+  if(!damageManifest||!damageManifest.files[type])return null;
+  if(!damageImages[type]){
+    const img=new Image();
+    img.decoding='async';
+    img.src='assets/sprites/damage/'+damageManifest.files[type];
+    damageImages[type]=img;
+  }
+  return damageImages[type];
+}
+function damageStage(hp,max,dead=false){if(dead||hp<=0)return 4;const pct=hp/max;return pct>.75?0:pct>.50?1:pct>.25?2:3}
+
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a),dist=(a,b,x,y)=>Math.hypot(a-x,b-y);
 function toast(t){ui.toast.textContent=t;ui.toast.style.opacity=1;clearTimeout(toast.t);toast.t=setTimeout(()=>ui.toast.style.opacity=0,850)}
 function say(t){ui.dialog.textContent='Barry: “'+t+'”';ui.dialog.style.opacity=1;clearTimeout(say.t);say.t=setTimeout(()=>ui.dialog.style.opacity=0,2600)}
@@ -214,7 +233,31 @@ if(damage>.36&&mat!=='vegetation'){ctx.strokeStyle='rgba(44,34,31,'+(.20+damage*
 
 if(hot){ctx.globalCompositeOperation='lighter';for(let i=0;i<Math.min(3,stage);i++){const x=(seededMark(t,460+i)-.5)*t.w*.44,y=(seededMark(t,470+i)-.40)*t.h*.34,r=1.8+seededMark(t,480+i)*3.2;ctx.fillStyle=i%2?'rgba(255,105,26,.50)':'rgba(255,204,74,.60)';ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill()}}
 ctx.restore()}
-function drawThing(t){ctx.save();ctx.translate(t.x,t.y);if(t.flash>0)ctx.globalAlpha=.72;const hot=t.burn>0,soot=clamp(1-t.hp/t.max,0,1),sprite=spriteImages[t.type],spriteReady=!!(sprite&&sprite.complete&&sprite.naturalWidth);if(t.dead){drawDestroyedThing(t);ctx.restore();return}
+function drawThing(t){
+ctx.save();
+ctx.translate(t.x,t.y);
+if(t.flash>0)ctx.globalAlpha=.72;
+const hot=t.burn>0,soot=clamp(1-t.hp/t.max,0,1),sprite=spriteImages[t.type],spriteReady=!!(sprite&&sprite.complete&&sprite.naturalWidth);
+const damageFrames=damageManifest&&damageManifest.frames[t.type];
+const damageImg=damageFrames?loadDamageSprite(t.type):null;
+const damageReady=!!(damageFrames&&damageFrames.length===5&&damageImg&&damageImg.complete&&damageImg.naturalWidth);
+// The approved artwork contains its own soot/flames/wreckage. Return before the legacy burn overlay.
+if(damageReady){
+  const stage=damageStage(t.hp,t.max,t.dead),full=damageFrames[0],frame=damageFrames[stage];
+  const scale=Math.min(t.w/full[2],t.h/full[3]);
+  const width=frame[2]*scale,height=frame[3]*scale;
+  ctx.drawImage(damageImg,frame[0],frame[1],frame[2],frame[3],-width/2,t.h/2-height,width,height);
+  if(hot&&!t.dead){
+    ctx.globalAlpha=1;
+    ctx.fillStyle='#2d2035cc';
+    ctx.fillRect(-t.w*.36,-t.h*.70,t.w*.72,5);
+    ctx.fillStyle='#ffb33b';
+    ctx.fillRect(-t.w*.36,-t.h*.70,t.w*.72*clamp(t.hp/t.max,0,1),5);
+  }
+  ctx.restore();
+  return;
+}
+if(t.dead){drawDestroyedThing(t);ctx.restore();return}
 if(spriteReady){ctx.drawImage(sprite,-t.w/2,-t.h/2,t.w,t.h)}
 else if(t.type==='trash'){ctx.fillStyle='#26323833';ctx.beginPath();ctx.ellipse(0,t.h*.42,t.w*.6,6,0,0,7);ctx.fill();ctx.fillStyle=t.variant%2?'#4f666d':'#667b70';ctx.fillRect(-t.w/2,-t.h/2+3,t.w,t.h-3);ctx.fillStyle='#34464c';ctx.fillRect(-t.w*.58,-t.h/2-3,t.w*1.16,7);ctx.fillStyle='#222';ctx.beginPath();ctx.arc(-t.w*.32,t.h*.5,4,0,7);ctx.arc(t.w*.32,t.h*.5,4,0,7);ctx.fill();ctx.strokeStyle='#ffffff22';ctx.lineWidth=2;ctx.strokeRect(-t.w*.32,-t.h*.18,t.w*.64,t.h*.48)}
 else if(t.type==='shrub'){ctx.fillStyle='#26323822';ctx.beginPath();ctx.ellipse(0,15,t.w*.55,7,0,0,7);ctx.fill();const greens=['#377444','#4d884f','#5f9858'];for(let i=-2;i<=2;i++){ctx.fillStyle=greens[(i+4+t.variant)%greens.length];ctx.beginPath();ctx.arc(i*11,-5+Math.abs(i)*4,16+(i%2?2:0),0,7);ctx.fill()}ctx.fillStyle='#9bcf79';for(let i=-1;i<=1;i++){ctx.beginPath();ctx.arc(i*13,-13,4,0,7);ctx.fill()}}
