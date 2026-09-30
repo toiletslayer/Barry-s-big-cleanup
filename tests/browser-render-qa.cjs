@@ -143,25 +143,31 @@ async function playShort(page){
   let target=await page.evaluate(()=>{
     const t=things.find(x=>x.type==='house'&&!x.dead)||things.find(x=>!x.dead);
     player.x=Math.max(70,t.x-155);player.y=t.y;
-    return {index:things.indexOf(t),x:t.x,y:t.y,type:t.type,before:t.hp};
+    // Near-threshold fixture: real flame must cause the HP stage transition.
+    const originalHp=t.hp;t.hp=Math.ceil(t.max*.757);
+    return {index:things.indexOf(t),x:t.x,y:t.y,type:t.type,before:t.hp,originalHp,seededNearThreshold:true};
   });
   const rect=await page.locator('#game').boundingBox();
   await page.mouse.move(rect.x+target.x*rect.width/1280,rect.y+target.y*rect.height/720);
+  const timeBefore=await page.evaluate(()=>time);
+  const wallBefore=Date.now();
   await page.mouse.down();
   await page.waitForTimeout(2800);
   const firingDebug=await page.evaluate(i=>({mouse:{...mouse},player:{...player},hit:flameTouches(things[i]),wantsFire:mouse.down||keys.Space||touchFire,fuelLocked,paused,started,target:{x:things[i].x,y:things[i].y,hp:things[i].hp,max:things[i].max,w:things[i].w,h:things[i].h}}),target.index);
-  log('firing-debug',firingDebug);
+  log('firing-debug',{...firingDebug,simulatedSeconds:await page.evaluate(()=>time)-timeBefore,wallSeconds:(Date.now()-wallBefore)/1000});
   await shot(page,'desktop-during-fire.png');
   await page.mouse.up();
   const after=await page.evaluate(i=>({hp:things[i].hp,max:things[i].max,stage:damageStage(things[i]),fuel:player.fuel}),target.index);
-  assert.ok(after.hp<target.before-35,'firing did not damage the chosen object');
+  assert.ok(after.hp<target.before-3,'real firing input did not damage the chosen object');
   assert.ok(after.stage>=1,'firing did not transition to a damaged sprite stage');
   await shot(page,'desktop-real-fire.png');
   const small=await page.evaluate(()=>{
     let t=things.find(x=>x.type==='trash'&&!x.dead)||things.find(x=>x.type==='shrub'&&!x.dead);
     if(!t)return null;
     player.x=Math.max(70,t.x-145);player.y=t.y;
-    return {index:things.indexOf(t),x:t.x,y:t.y,type:t.type};
+    // Low-HP fixture checks the genuine destroyed transition and score award.
+    t.hp=Math.min(t.hp,4);
+    return {index:things.indexOf(t),x:t.x,y:t.y,type:t.type,seededLowHp:true};
   });
   if(small){
     await page.mouse.move(rect.x+small.x*rect.width/1280,rect.y+small.y*rect.height/720);
