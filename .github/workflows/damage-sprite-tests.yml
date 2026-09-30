@@ -12,3 +12,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify sprite sheets, game script, and HP stage boundaries
         run: node tests/damage-sprites.test.cjs
+      - name: Verify cumulative frame alignment metadata
+        run: node tests/damage-sprite-frames.test.cjs
