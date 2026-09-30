@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "active": true,
   "format": "svg",
   "basePath": "assets/sprites/objects/",
@@ -36,5 +36,42 @@
     "burn-overlays",
     "hud"
   ],
-  "notes": "Object SVGs are loaded by index.html; procedural object rendering remains as a fallback."
+  "notes": "Five-stage HP-based PNG damage sheets render when loaded. Existing SVG assets and procedural drawings remain fallbacks. Barry and resident art are unchanged.",
+  "damageBasePath": "assets/sprites/damage/",
+  "damageFormat": "png",
+  "damageDimensions": {
+    "width": 2172,
+    "height": 724,
+    "columns": 5
+  },
+  "damageStageOrder": [
+    "full",
+    "three_quarter",
+    "half",
+    "quarter",
+    "destroyed"
+  ],
+  "damageSheets": {
+    "trash": "trash.png",
+    "shrub": "shrub.png",
+    "fence": "fence.png",
+    "mailbox": "mailbox.png",
+    "car": "car.png",
+    "shed": "shed.png",
+    "house": "house.png",
+    "hydrant": "hydrant.png",
+    "tree": "tree.png",
+    "bench": "bench.png",
+    "streetlight": "streetlight.png",
+    "dumpster": "dumpster.png",
+    "sign": "sign.png",
+    "storefront": "storefront.png",
+    "cart": "cart.png",
+    "gasPump": "gas-pump.png",
+    "canopy": "canopy.png",
+    "bigbox": "bigbox.png",
+    "booth": "booth.png",
+    "table": "table.png",
+    "pavilion": "pavilion.png"
+  }
 }
