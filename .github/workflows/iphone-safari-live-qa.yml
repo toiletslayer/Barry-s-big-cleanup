@@ -1,0 +1,31 @@
+name: Live iPhone Safari QA
+on:
+  push:
+    branches:
+      - qa/iphone-safari-live-20260930
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  iphone-webkit-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright WebKit
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install webkit --with-deps
+      - name: Test live GitHub Pages build with iPhone-sized WebKit
+        run: node tests/iphone-safari-live-qa.cjs
+      - name: Upload iPhone Safari QA screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: barry-iphone-safari-live-qa
+          path: qa-iphone-safari/
+          if-no-files-found: warn
+          retention-days: 14
