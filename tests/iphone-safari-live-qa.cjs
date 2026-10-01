@@ -75,29 +75,32 @@ async function layout(page,label){
   return v;
 }
 
+async function dispatchTouch(locator,type,points,changed){
+  await locator.dispatchEvent(type,{
+    touches:points,targetTouches:points,changedTouches:changed,
+    bubbles:true,cancelable:true
+  });
+}
 async function touchDrag(page,selector,dx,dy,holdMs=650){
-  return await page.evaluate(async({selector,dx,dy,holdMs})=>{
-    const el=document.querySelector(selector),r=el.getBoundingClientRect();
-    const x0=r.left+r.width/2,y0=r.top+r.height/2,x1=x0+dx,y1=y0+dy;
-    const mk=(x,y,id=41)=>new Touch({identifier:id,target:el,clientX:x,clientY:y,pageX:x,pageY:y,screenX:x,screenY:y,radiusX:8,radiusY:8,rotationAngle:0,force:.7});
-    const emit=(type,touches,changed)=>el.dispatchEvent(new TouchEvent(type,{bubbles:true,cancelable:true,touches,targetTouches:touches,changedTouches:changed}));
-    const t0=mk(x0,y0); emit('touchstart',[t0],[t0]);
-    const t1=mk(x1,y1); emit('touchmove',[t1],[t1]);
-    await new Promise(r=>setTimeout(r,holdMs));
-    emit('touchend',[],[t1]);
-    return {supported:true};
-  },{selector,dx,dy,holdMs});
+  const loc=page.locator(selector),r=await loc.boundingBox();
+  const x0=r.x+r.width/2,y0=r.y+r.height/2,x1=x0+dx,y1=y0+dy;
+  const p0={identifier:41,clientX:x0,clientY:y0,pageX:x0,pageY:y0,screenX:x0,screenY:y0,radiusX:8,radiusY:8,rotationAngle:0,force:.7};
+  const p1={identifier:41,clientX:x1,clientY:y1,pageX:x1,pageY:y1,screenX:x1,screenY:y1,radiusX:8,radiusY:8,rotationAngle:0,force:.7};
+  await dispatchTouch(loc,'touchstart',[p0],[p0]);
+  await dispatchTouch(loc,'touchmove',[p1],[p1]);
+  await page.waitForTimeout(holdMs);
+  await dispatchTouch(loc,'touchend',[],[p1]);
+  return {supported:true};
 }
 
 async function holdTouch(page,selector,holdMs=900){
-  return await page.evaluate(async({selector,holdMs})=>{
-    const el=document.querySelector(selector),r=el.getBoundingClientRect();
-    const x=r.left+r.width/2,y=r.top+r.height/2;
-    const t=new Touch({identifier:43,target:el,clientX:x,clientY:y,pageX:x,pageY:y,screenX:x,screenY:y,radiusX:8,radiusY:8,force:.8});
-    const emit=(type,touches,changed)=>el.dispatchEvent(new TouchEvent(type,{bubbles:true,cancelable:true,touches,targetTouches:touches,changedTouches:changed}));
-    emit('touchstart',[t],[t]); await new Promise(r=>setTimeout(r,holdMs)); emit('touchend',[],[t]);
-    return true;
-  },{selector,holdMs});
+  const loc=page.locator(selector),r=await loc.boundingBox();
+  const x=r.x+r.width/2,y=r.y+r.height/2;
+  const p={identifier:43,clientX:x,clientY:y,pageX:x,pageY:y,screenX:x,screenY:y,radiusX:8,radiusY:8,rotationAngle:0,force:.8};
+  await dispatchTouch(loc,'touchstart',[p],[p]);
+  await page.waitForTimeout(holdMs);
+  await dispatchTouch(loc,'touchend',[],[p]);
+  return true;
 }
 
 async function inputChecks(page){
@@ -123,21 +126,20 @@ async function inputChecks(page){
   assert.ok(fired.stage>=1,'touch fire did not cross HP sprite stage');
   assert.equal(fired.touchFire,false,'fire button stayed latched after touchend');
 
-  // Multi-touch sanity: movement touch and fire touch can be active together.
-  const multi=await page.evaluate(async()=>{
-    const pad=document.querySelector('#pad'),fire=document.querySelector('#firebtn');
-    const pr=pad.getBoundingClientRect(),fr=fire.getBoundingClientRect();
-    const p0=new Touch({identifier:51,target:pad,clientX:pr.left+pr.width*.78,clientY:pr.top+pr.height*.5,pageX:pr.left+pr.width*.78,pageY:pr.top+pr.height*.5});
-    const f0=new Touch({identifier:52,target:fire,clientX:fr.left+fr.width*.5,clientY:fr.top+fr.height*.5,pageX:fr.left+fr.width*.5,pageY:fr.top+fr.height*.5});
-    pad.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,cancelable:true,touches:[p0],targetTouches:[p0],changedTouches:[p0]}));
-    pad.dispatchEvent(new TouchEvent('touchmove',{bubbles:true,cancelable:true,touches:[p0],targetTouches:[p0],changedTouches:[p0]}));
-    fire.dispatchEvent(new TouchEvent('touchstart',{bubbles:true,cancelable:true,touches:[f0],targetTouches:[f0],changedTouches:[f0]}));
-    const active={moveX:touchMove.x,fire:touchFire};
-    await new Promise(r=>setTimeout(r,280));
-    fire.dispatchEvent(new TouchEvent('touchend',{bubbles:true,cancelable:true,touches:[],targetTouches:[],changedTouches:[f0]}));
-    pad.dispatchEvent(new TouchEvent('touchend',{bubbles:true,cancelable:true,touches:[],targetTouches:[],changedTouches:[p0]}));
-    return {active,released:{moveX:touchMove.x,fire:touchFire}};
-  });
+  // Multi-touch sanity: movement and fire state can coexist.
+  const pad=page.locator('#pad'),fire=page.locator('#firebtn');
+  const pr=await pad.boundingBox(),fr=await fire.boundingBox();
+  const pp={identifier:51,clientX:pr.x+pr.width*.78,clientY:pr.y+pr.height*.5,pageX:pr.x+pr.width*.78,pageY:pr.y+pr.height*.5};
+  const fp={identifier:52,clientX:fr.x+fr.width*.5,clientY:fr.y+fr.height*.5,pageX:fr.x+fr.width*.5,pageY:fr.y+fr.height*.5};
+  await dispatchTouch(pad,'touchstart',[pp],[pp]);
+  await dispatchTouch(pad,'touchmove',[pp],[pp]);
+  await dispatchTouch(fire,'touchstart',[fp],[fp]);
+  const active=await page.evaluate(()=>({moveX:touchMove.x,fire:touchFire}));
+  await page.waitForTimeout(280);
+  await dispatchTouch(fire,'touchend',[],[fp]);
+  await dispatchTouch(pad,'touchend',[],[pp]);
+  const released=await page.evaluate(()=>({moveX:touchMove.x,fire:touchFire}));
+  const multi={active,released};
   assert.ok(multi.active.moveX>.25&&multi.active.fire,'simultaneous move+fire touch state failed');
   assert.equal(multi.released.moveX,0,'multi-touch movement stuck');
   assert.equal(multi.released.fire,false,'multi-touch fire stuck');
